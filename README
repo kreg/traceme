@@ -6,7 +6,10 @@ By using this software in any fashion, you are agreeing to be bound by
 the terms of this license.
 You must not remove this notice, or any other, from this software.
 
-This tracing library track of functions you're tracing, allows you to
-toggle trace on/off for individual functions, and trace every function in a
-namespace. If you reload a function, tracing is disabled for that
-function.
+With this tracing library, tracing can be toggled for individual
+functions. The library tracks all functions currently being traced.
+
+If you reload a function, tracing is disabled for that function.
+
+The library cheats by changing the root binding of the function. Thus,
+only root-bound functions can be traced.

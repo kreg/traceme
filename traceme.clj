@@ -13,16 +13,6 @@
 
 (ns traceme)
 
-(defn nqsym
-  "symbol -> namespaced-qualified symbol"
-  [sym]
-  (symbol (.substring (.toString (resolve sym)) 2)))
-
-(defn root-bound?
-  "is the symbol root bound?"
-  [sym]
-  (.hasRoot sym))
-
 ;;;; trace entry/exit functions
 
 (defn trace-entry [id nm args]
@@ -62,11 +52,11 @@
     (println "tracing" key)
     (alter traced-map assoc 
            key (struct-map traced-fn-struct :orig f :traced traced-fn))
-    (intern (symbol (namespace key)) (symbol (name key)) traced-fn)))
+    (.doReset key traced-fn)))
 
 (defn- disable-trace [key traced-fn]
   (println "untracing" key)
-  (intern (symbol (namespace key)) (symbol (name key)) (:orig traced-fn))
+  (.doReset key (:orig traced-fn))
   (alter traced-map dissoc key))
 
 ;;;; lookup function in traced map to determine what to do for
@@ -90,12 +80,6 @@
          (enable-trace key f))))
    nil))
 
-(defn- trace-ns-aux [ns action]
-  (dosync
-   (doseq [[k v] (ns-interns ns)]
-     (when (and (root-bound? v) (fn? (deref v)))
-       (trace-aux (deref v) (symbol (str ns) (str k)) action)))))
-
 ;;;; 
 ;;;; The user interace starts here
 ;;;; 
@@ -103,40 +87,24 @@
 (defmacro toggle-trace
   "Toggles tracing of function f"
   [f]
-  (let [key (gensym)]
-    `(let [~key (nqsym (quote ~f))]
-       (trace-aux ~f ~key :toggle))))
+  `(trace-aux ~f (var ~f) :toggle))
 
 (defmacro trace-on
   "Turn trace on for function f"
   [f]
-  (let [key (gensym)]
-    `(let [~key (nqsym (quote ~f))]
-       (trace-aux ~f ~key :on))))
+  `(trace-aux ~f (var ~f) :on))
 
 (defmacro trace-off
   "Turn trace off for function f"
   [f]
-  (let [key (gensym)]
-    `(let [~key (nqsym (quote ~f))]
-       (trace-aux ~f ~key :off))))
-
-(defn trace-ns
-  "trace everything in the namespace ns. Don't trace clojure.core!"
-  [ns]
-  (trace-ns-aux ns :on))
-
-(defn untrace-ns
-  "untrace everything in the namespace ns"
-  [ns]
-  (trace-ns-aux ns :off))
+  `(trace-aux ~f (var ~f) :off))
 
 (defn untrace-all 
   "untrace everything and clean out traced-map"
   []
   (dosync
    (doseq [[key traced-fn] @traced-map]
-     (when (= (:traced traced-fn) (deref (resolve key)))
+     (when (= (:traced traced-fn) (deref key))
        (disable-trace key traced-fn)))
    (ref-set traced-map {})
    nil))
