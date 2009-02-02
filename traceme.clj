@@ -50,14 +50,14 @@
 (defn- enable-trace [key f]
   (let [traced-fn (trace-wrap key f)]
     (println "tracing" key)
-    (alter traced-map assoc 
-           key (struct-map traced-fn-struct :orig f :traced traced-fn))
+    (dosync (alter traced-map assoc key 
+                   (struct-map traced-fn-struct :orig f :traced traced-fn)))
     (.doReset key traced-fn)))
 
 (defn- disable-trace [key traced-fn]
   (println "untracing" key)
   (.doReset key (:orig traced-fn))
-  (alter traced-map dissoc key))
+  (dosync (alter traced-map dissoc key)))
 
 ;;;; lookup function in traced map to determine what to do for
 ;;;; toggle/on/off action
@@ -65,46 +65,45 @@
 (defn trace-aux [f key action]
   (when (not (fn? f))
     (throw (Exception. "not a function")))
-  (dosync
-   (let [traced-fn (@traced-map key)]
-     (if (and traced-fn (= f (:traced traced-fn)))
+  (let [traced-fn (@traced-map key)]
+    (if (and traced-fn (= f (:traced traced-fn)))
 
-       ;; found
-       (if (= action :on)
-         (println key "is already being traced")
-         (disable-trace key traced-fn))
+      ;; found
+      (if (= action :on)
+        (println key "is already being traced")
+        (disable-trace key traced-fn))
 
-       ;; not found
-       (if (= action :off)
-         (println key "was not being traced")
-         (enable-trace key f))))
-   nil))
+      ;; not found
+      (if (= action :off)
+        (println key "was not being traced")
+        (enable-trace key f))))
+  nil)
 
 ;;;; 
 ;;;; The user interace starts here
 ;;;; 
 
 (defmacro toggle-trace
-  "Toggles tracing of function f"
-  [f]
-  `(trace-aux ~f (var ~f) :toggle))
+"Toggles tracing of function f"
+[f]
+`(trace-aux ~f (var ~f) :toggle))
 
 (defmacro trace-on
-  "Turn trace on for function f"
-  [f]
-  `(trace-aux ~f (var ~f) :on))
+"Turn trace on for function f"
+[f]
+`(trace-aux ~f (var ~f) :on))
 
 (defmacro trace-off
-  "Turn trace off for function f"
-  [f]
-  `(trace-aux ~f (var ~f) :off))
+"Turn trace off for function f"
+[f]
+`(trace-aux ~f (var ~f) :off))
 
 (defn untrace-all 
-  "untrace everything and clean out traced-map"
-  []
-  (dosync
-   (doseq [[key traced-fn] @traced-map]
-     (when (= (:traced traced-fn) (deref key))
-       (disable-trace key traced-fn)))
-   (ref-set traced-map {})
-   nil))
+"untrace everything and clean out traced-map"
+[]
+(dosync
+ (doseq [[key traced-fn] @traced-map]
+   (when (= (:traced traced-fn) (deref key))
+     (disable-trace key traced-fn)))
+ (ref-set traced-map {})
+ nil))
