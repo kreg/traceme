@@ -84,26 +84,25 @@
 ;;;; 
 
 (defmacro toggle-trace
-"Toggles tracing of function f"
-[f]
-`(trace-aux ~f (var ~f) :toggle))
+  "Toggles tracing of function f"
+  [f]
+  `(trace-aux ~f (var ~f) :toggle))
 
 (defmacro trace-on
-"Turn trace on for function f"
-[f]
-`(trace-aux ~f (var ~f) :on))
+  "Turn trace on for function f"
+  [f]
+  `(trace-aux ~f (var ~f) :on))
 
 (defmacro trace-off
-"Turn trace off for function f"
-[f]
-`(trace-aux ~f (var ~f) :off))
+  "Turn trace off for function f"
+  [f]
+  `(trace-aux ~f (var ~f) :off))
 
 (defn untrace-all 
-"untrace everything and clean out traced-map"
-[]
-(dosync
- (doseq [[key traced-fn] @traced-map]
-   (when (= (:traced traced-fn) (deref key))
-     (disable-trace key traced-fn)))
- (ref-set traced-map {})
- nil))
+  "untrace everything and clean out traced-map"
+  []
+  (doseq [[key traced-fn] @traced-map]
+    (when (= (:traced traced-fn) (deref key))
+      (disable-trace key traced-fn)))
+  (dosync (ref-set traced-map {}))
+  nil)
