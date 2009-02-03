@@ -52,13 +52,11 @@
     (println "tracing" key)
     (dosync (alter traced-map assoc key 
                    (struct-map traced-fn-struct :orig f :traced traced-fn)))
-    ;; resetting the root binding is not good form; don't try this at home
-    (.doReset key traced-fn)))
+    (alter-var-root key (fn [_] traced-fn))))
 
 (defn- disable-trace [key traced-fn]
   (println "untracing" key)
-  ;; resetting the root binding is not good form; don't try this at home
-  (.doReset key (:orig traced-fn))
+  (alter-var-root key (fn [_] (:orig traced-fn)))
   (dosync (alter traced-map dissoc key)))
 
 ;;;; lookup function in traced map to determine what to do for
